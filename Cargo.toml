@@ -1,0 +1,16 @@
+[package]
+name = "openai-chatbot"
+version = "0.1.0"
+authors = ["Ivan Hrabcak <ivan@hrabcak.eu>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rocket = { version = "0.5.0-rc.1", features = ["json"] }
+serde_json = "1.0.64"
+rand = "0.8.3"
+serde = "1.0.130"
+reqwest = "0.11.5"
+ttl_cache = "0.5.1"
+futures = "0.3.17"
