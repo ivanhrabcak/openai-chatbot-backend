@@ -8,12 +8,14 @@ use rocket::State;
 use ttl_cache::TtlCache;
 use openai::OpenAI;
 use crate::auth::generate_token;
+use crate::cors::CORS;
 
 use crate::request::Response;
 
 pub mod request;
 pub mod openai;
 pub mod auth;
+pub mod cors;
 
 pub struct Nothing;
 
@@ -56,7 +58,7 @@ pub async fn login(cache: &CacheState, open_ai: &OpenAIState, password: String) 
 pub async fn chat(cache: &CacheState, open_ai: &OpenAIState, prompt: Json<Prompt>, token: String) -> Response<String> {
     let prompt = prompt.clone().prompt;
 
-    let mut cache = cache.lock().await;
+    let cache = cache.lock().await;
     let mut open_ai = open_ai.lock().await;
 
     if !cache.get(&token).is_some() {
@@ -72,8 +74,11 @@ fn rocket() -> _ {
     let API_KEY = env!("OPENAI_TOKEN");
     let openai_state = Arc::new(Mutex::new(OpenAI::new(API_KEY.to_string())));
     let token_cache: Arc<Mutex<TtlCache<String, Nothing>>> = Arc::new(Mutex::new(TtlCache::new(50)));
+
+
     rocket::build()
         .manage(token_cache)
         .manage(openai_state)
+        .attach(CORS)
         .mount("/", routes![index, login, chat])
 }

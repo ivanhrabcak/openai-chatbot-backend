@@ -38,13 +38,13 @@ impl Default for CompletionParams {
         CompletionParams {
             prompt: INITIAL_CONTEXT.to_string(),
             max_tokens: 150,
-            temperature: 0.4,
+            temperature: 0.8,
             top_p: 1.0,
             stream: false,
             n: 1,
             stop: "\n".to_string(),
             echo: true,
-            frequency_penalty: 0.6
+            frequency_penalty: 0.3
         }
     }
 }
@@ -93,17 +93,20 @@ impl OpenAI {
     }
 
     pub async fn get_response(&mut self, user_token: String, user_prompt: String) -> String {
+        println!("{}", user_prompt);
         self.context_manager.add_to_context(user_token.clone(), user_prompt.clone());
 
         let context = self.context_manager.get_context(user_token.clone());
 
         let mut completion_params = CompletionParams::default();
-        completion_params.prompt = format!("{}{}\nAI:", context, user_prompt.clone());
+        completion_params.prompt = format!("{}\nAI:", context);
 
         let completion_params = match serde_json::to_string(&completion_params) {
             Ok(params) => params,
             Err(_) => return "Serialization Error!".to_string()
         };
+
+        println!("{}", completion_params);
 
         let endpoint = format!("https://api.openai.com/v1/engines/{}/completions", ENGINE);
         let response = self.client.post(endpoint)
@@ -112,17 +115,21 @@ impl OpenAI {
             .body(completion_params)
 
             .send().await;
-        
+
         match response {
             Ok(response) => {
                 let response_text = response.text().await.unwrap();
+                println!("{}", response_text);
                 let response: HashMap<String, Value> = serde_json::from_str(&*response_text).unwrap();
 
                 let choices = response.get("choices");
 
                 if let Some(choices) = choices {
                     match choices {
-                        Value::Null => "The AI returned no response.".to_string(),
+                        Value::Null => {
+                            println!("Null response json!");
+                            "The AI returned no response.".to_string()
+                        },
                         Value::Array(array) => {
                             let ai_output_map = array[0].as_object().unwrap();
 
@@ -137,10 +144,14 @@ impl OpenAI {
                                 .last().unwrap()
                                 .replace("AI: ", "")
                         }
-                        _ => "The AI returned no response.".to_string()
+                        _ => {
+                            println!("Unexpected response!");
+                            "The AI returned no response.".to_string()
+                        }
                     }
                 }
                 else {
+                    println!("Null choices!");
                     "The AI returned no response.".to_string()
                 }
             },
